@@ -16,7 +16,6 @@ const addressSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: true,
     trim: true
   },
 
@@ -34,7 +33,6 @@ const userSchema = new mongoose.Schema({
 
   mobile: {
     type: String,
-    required: true
   },
 
   profile: {
@@ -52,18 +50,29 @@ const userSchema = new mongoose.Schema({
 
   addresses: [addressSchema],
 
-  cart: [
+  cart: {
+  items: [
     {
-      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'products' },
       quantity: { type: Number, default: 1 },
       size: String
+    }
+  ],
+  subtotal: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  cartTotal: { type: Number, default: 0 }
+},
+
+  orders: [
+    {
+      orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'orders' },
     }
   ],
 
   wishlist: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product'
+      ref: 'products'
     }
   ],
 

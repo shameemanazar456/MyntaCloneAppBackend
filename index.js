@@ -27,8 +27,6 @@ MyntraServer.use(express.json())
 
 //use router
 MyntraServer.use(router)
-
-
 //set port for the server
 PORT = 4000 || process.env.PORT
 

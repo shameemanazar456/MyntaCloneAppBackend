@@ -1,15 +1,23 @@
 const mongoose = require('mongoose');
 
-const productSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  brand: String,
-  price: { type: Number, required: true },
-  category: String,
-  image: String, // S3 image URL
-  size: [String], // e.g. ["S", "M", "L", "XL"]
-  description: String,
-  stock: { type: Number, default: 0 },
-  rating: { type: Number, default: 0 }
-}, { timestamps: true });
+// Subdocument schema for each variant (color + size)
+const variantSchema = new mongoose.Schema({
+  sku: { type: String, required: true, unique: true }, // e.g., TSH-NIKE-RD-M
+  color: { type: String, required: true },             // e.g., "Red"
+  size: { type: String, required: true },              // e.g., "M", "L"
+  price: { type: Number, required: true },             // Price for this variant
+  stock: { type: Number, default: 0 },                 // Stock quantity
+  images: [String]                                     // Images for this variant (e.g., color-specific)
+}, { _id: false });
 
-module.exports = mongoose.model('Product', productSchema);
+const productSchema = new mongoose.Schema({
+  title: { type: String, required: true },             // Product title (e.g., "Men's T-Shirt")
+  brand: { type: String },                             // Brand name
+  category: { type: String },                          // Product category
+  description: { type: String },                       // Product description
+  variants: [variantSchema],                           // Array of all color + size combinations
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'users' }, // Optional admin reference
+  createdAt: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('products', productSchema);

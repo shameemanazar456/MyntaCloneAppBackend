@@ -12,39 +12,39 @@ exports.addProduct = async (req, res) => {
       variants // will be a string in multipart/form-data
     } = req.body;
 
-    // ✅ Parse JSON string from form-data
+    //  Parse JSON string from form-data
     let parsedVariants = [];
     try {
       parsedVariants = JSON.parse(variants);
     } catch (err) {
       return res.status(400).json({
-        error: '❌ Invalid variants format. Must be a valid JSON string.'
+        error: ' Invalid variants format. Must be a valid JSON string.'
       });
     }
 
-    // ✅ Validate core fields
+    // Validate core fields
     if (!title || !brand || !category || parsedVariants.length === 0) {
       return res.status(400).json({
-        error: '❌ Missing required fields or empty variants list'
+        error: 'Missing required fields or empty variants list'
       });
     }
 
-    // ✅ Validate each variant
+    // Validate each variant
     for (const v of parsedVariants) {
       if (!v.sku || !v.color || !v.size || !v.price) {
         return res.status(400).json({
-          error: '❌ Each variant must include sku, color, size, and price'
+          error: ' Each variant must include sku, color, size, and price'
         });
       }
     }
 
-    // 🖼️ Optional: Attach uploaded image URLs to first variant
+    //  Optional: Attach uploaded image URLs to first variant
     if (req.files && req.files.length > 0) {
       const uploadedImagePaths = req.files.map(f => `/uploads/${f.filename}`);
       parsedVariants[0].images = uploadedImagePaths;
     }
 
-    // 📦 Create and save new product
+    // Create and save new product
     const newProduct = new Product({
       title,
       brand,
@@ -57,13 +57,13 @@ exports.addProduct = async (req, res) => {
     await newProduct.save();
 
     res.status(201).json({
-      message: '✅ Product added successfully with variants',
+      message: ' Product added successfully with variants',
       product: newProduct
     });
 
   } catch (error) {
     console.error('Add Product Error:', error);
-    res.status(500).json({ error: '❌ Failed to add product' });
+    res.status(500).json({ error: 'Failed to add product' });
   }
 };
 
@@ -76,11 +76,35 @@ exports.getAllProductController = async (req, res) => {
     if (allProducts && allProducts.length > 0) {
       res.status(200).json(allProducts);
     } else {
-      res.status(404).json({ message: '❌ No products found' });
+      res.status(404).json({ message: ' No products found' });
     }
 
   } catch (error) {
     console.error('Get All Products Error:', error);
-    res.status(500).json({ error: '❌ Failed to fetch products' });
+    res.status(500).json({ error: 'Failed to fetch products' });
+  }
+};
+
+//get product by ID
+exports.getProductById = async (req, res) => {
+  try {
+    const productId = req.params.id;
+
+    // Validate ID format
+    if (!productId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'Invalid product ID format' });
+    }
+
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      return res.status(404).json({ error: ' Product not found' });
+    }
+
+    res.status(200).json(product);
+
+  } catch (error) {
+    console.error('Get Product Error:', error);
+    res.status(500).json({ error: ' Failed to fetch product' });
   }
 };

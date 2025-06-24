@@ -4,159 +4,117 @@ const Product = require('../model/productModel');
 const Coupon = require('../model/couponModel');
 
 // controller for handling order placement
-/* exports.placeOrderController = async (req, res) => {
-    const {userId} = req.params
-  const { items, shippingAddress, paymentMethod } = req.body;
 
-  if (!userId || !Array.isArray(items) || items.length === 0 || !paymentMethod) {
-    return res.status(400).json({ error: 'Missing required order details' });
+// Utility to calculate final price after checking variant/product discount
+const getDiscountedPrice = (variant, product) => {
+  const now = new Date();
+  let price = variant.price;
+  let discount = null;
+
+  if (variant.discount?.isActive && now >= variant.discount.startDate && now <= variant.discount.endDate) {
+    discount = variant.discount;
+  } else if (product.discount?.isActive && now >= product.discount.startDate && now <= product.discount.endDate) {
+    discount = product.discount;
   }
 
-  try {
-    // Check user exists
-    const user = await users.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+  if (discount) {
+    if (discount.type === 'flat') {
+      price -= discount.value;
+    } else if (discount.type === 'percentage') {
+      price -= (price * discount.value) / 100;
     }
-
-    let totalAmount = 0;
-    const validatedItems = [];
-
-    // Validate stock and calculate total
-    for (const item of items) {
-      const { productId, quantity, size, price } = item;
-
-      if (!productId || !quantity || !price) {
-        return res.status(400).json({ error: 'Each item must have productId, quantity, and price' });
-      }
-
-      const product = await Product.findById(productId);
-      if (!product) {
-        return res.status(404).json({ error: `Product not found: ${productId}` });
-      }
-
-      // Check stock availability (assume flat stock)
-      if (product.stock < quantity) {
-        return res.status(400).json({
-          error: `Only ${product.stock} unit(s) available for ${product.name}`
-        });
-      }
-
-      // Deduct stock immediately
-      product.stock -= quantity;
-      await product.save();
-
-      totalAmount += price * quantity;
-
-      validatedItems.push({ productId, quantity, size, price });
-    }
-
-    // Create order
-    const newOrder = new Order({
-      userId,
-      items: validatedItems,
-      shippingAddress,
-      paymentMethod,
-      totalAmount,
-      orderStatus: 'Pending',
-      paymentStatus: paymentMethod === 'COD' ? 'Pending' : 'Paid',
-      isDelivered: false,
-      statusTimestamps: {
-        placedAt: new Date()
-      }
-    });
-
-    await newOrder.save();
-
-    // Add order ID to user’s `orders` array
-    user.orders.push(newOrder._id);
-
-
-    // Clear user's cart
-    user.cart = [];
-    await user.save();
-
-    res.status(201).json({
-      message: 'Order placed successfully',
-      order: newOrder
-    });
-
-  } catch (error) {
-    console.error('Place order error:', error);
-    res.status(500).json({ error: 'Failed to place order' });
   }
-}; */
 
+  return Math.max(price, 0);
+};
 
 exports.placeOrderController = async (req, res) => {
-  const { userId, items, cartTotal, couponCode, shippingAddress, paymentMethod } = req.body;
+  const { userId, items, couponCode, shippingAddress, paymentMethod } = req.body;
 
-  if (!userId || !items || items.length === 0 || !cartTotal || !paymentMethod) {
+  if (!userId || !items || items.length === 0 || !paymentMethod || !shippingAddress) {
     return res.status(400).json({ error: 'Required fields are missing' });
   }
 
   try {
+    let subtotal = 0;
+    const finalItems = [];
+
+    for (const item of items) {
+      const { productId, variantSKU, quantity } = item;
+
+      const product = await Product.findById(productId);
+      if (!product) return res.status(404).json({ error: 'Product not found' });
+
+      const variant = product.variants.find(v => v.sku === variantSKU);
+      if (!variant) return res.status(404).json({ error: `Variant ${variantSKU} not found` });
+
+      if (variant.stock < quantity) {
+        return res.status(400).json({ error: `Insufficient stock for ${product.title} (${variant.color} - ${variant.size})` });
+      }
+
+      const unitPrice = getDiscountedPrice(variant, product);
+      const totalItemPrice = unitPrice * quantity;
+      subtotal += totalItemPrice;
+
+      // Deduct stock
+      variant.stock -= quantity;
+
+      finalItems.push({
+        productId,
+        variantSKU,
+        quantity,
+        priceAtPurchase: unitPrice,
+        color: variant.color,
+        size: variant.size
+      });
+
+      await product.save();
+    }
+
+    // Apply coupon (if any)
     let discountAmount = 0;
-    let finalAmount = cartTotal;
+    let finalAmount = subtotal;
 
-    //  Apply coupon if provided
     if (couponCode) {
-      const couponApplied = await coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
-
-      if (!couponApplied) {
-        return res.status(400).json({ error: 'Invalid or inactive coupon' });
+      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
+      if (!coupon) return res.status(400).json({ error: 'Invalid or inactive coupon' });
+      if (new Date() > coupon.expiresAt) return res.status(400).json({ error: 'Coupon expired' });
+      if (subtotal < coupon.minOrderAmount) {
+        return res.status(400).json({ error: `Minimum ₹${coupon.minOrderAmount} required for this coupon` });
       }
 
-      if (new Date() > couponApplied.expiresAt) {
-        return res.status(400).json({ error: 'Coupon has expired' });
-      }
-
-      if (cartTotal < couponApplied.minOrderAmount) {
-        return res.status(400).json({ error: `Minimum order of ₹${couponApplied.minOrderAmount} required` });
-      }
-
-      const usage = couponApplied.usedBy.find(u => u.userId.toString() === userId);
-      if (usage && usage.usedCount >= couponApplied.usageLimit) {
+      const usage = coupon.usedBy.find(u => u.userId.toString() === userId);
+      if (usage && usage.usedCount >= coupon.usageLimit) {
         return res.status(400).json({ error: 'Coupon usage limit reached' });
       }
 
-      //  Calculate discount
-      if (couponApplied.discountType === 'percentage') {
-        discountAmount = (cartTotal * couponApplied.discountValue) / 100;
-        if (couponApplied.maxDiscountAmount) {
-          discountAmount = Math.min(discountAmount, couponApplied.maxDiscountAmount);
+      if (coupon.discountType === 'percentage') {
+        discountAmount = (subtotal * coupon.discountValue) / 100;
+        if (coupon.maxDiscountAmount) {
+          discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
         }
-      } else if (couponApplied.discountType === 'flat') {
-        discountAmount = couponApplied.discountValue;
+      } else if (coupon.discountType === 'flat') {
+        discountAmount = coupon.discountValue;
       }
 
-      finalAmount = cartTotal - discountAmount;
+      finalAmount -= discountAmount;
 
-      //  Save coupon usage
+      // Save coupon usage
       if (usage) {
         usage.usedCount += 1;
       } else {
-        couponApplied.usedBy.push({ userId, usedCount: 1 });
+        coupon.usedBy.push({ userId, usedCount: 1 });
       }
-
-      await couponApplied.save();
+      await coupon.save();
     }
 
-    //  Optional stock validation
-    for (const item of items) {
-      const product = await Product.findById(item.productId);
-      if (!product || product.stock < item.quantity) {
-        return res.status(400).json({ error: `Insufficient stock for ${product?.name || 'a product'}` });
-      }
-    }
-
-    // Create and save order
-    const newOrder = new Order({
+    // Create order
+    const order = new Order({
       userId,
-      items,
+      items: finalItems,
       shippingAddress,
       paymentMethod,
-      subtotalAmount: cartTotal,
+      subtotalAmount: subtotal,
       discountAmount,
       couponCode: couponCode || null,
       totalAmount: finalAmount,
@@ -167,17 +125,17 @@ exports.placeOrderController = async (req, res) => {
       }
     });
 
-    await newOrder.save();
+    await order.save();
 
-    //  Update user document: push order and clear cart
-    const user = await User.findById(userId);
-    user.orders.push(newOrder._id);
-    user.cart = [];
+    // Clear user cart
+    const user = await users.findById(userId);
+    user.orders.push(order._id);
+    user.cart = { items: [], subtotal: 0, discount: 0, cartTotal: 0 };
     await user.save();
 
     res.status(201).json({
       message: 'Order placed successfully',
-      order: newOrder
+      order
     });
 
   } catch (error) {
@@ -187,27 +145,229 @@ exports.placeOrderController = async (req, res) => {
 };
 
 //controller to view the order history of a customer
-
 exports.viewOrderHistoryController = async (req, res) => {
   const { userId } = req.params;
 
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
   try {
     const orders = await Order.find({ userId })
-      .sort({ orderedAt: -1 })
-      .populate('items.productId', 'name price image stock description'); // fields to populate from Product
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'items.productId',
+        select: 'title brand category variants'  // populate only basic info
+      });
 
     if (!orders || orders.length === 0) {
       return res.status(404).json({ message: 'No orders found for this user' });
     }
 
+    const formattedOrders = orders.map(order => {
+      const updatedItems = order.items.map(item => {
+        const product = item.productId;
+        const variantDetails = product?.variants?.find(v => v.sku === item.variantSKU);
+
+        return {
+          productId: product?._id,
+          title: product?.title,
+          brand: product?.brand,
+          variantSKU: item.variantSKU,
+          color: item.color || variantDetails?.color,
+          size: item.size || variantDetails?.size,
+          priceAtPurchase: item.priceAtPurchase,
+          quantity: item.quantity,
+          image: variantDetails?.images?.[0] || null
+        };
+      });
+
+      return {
+        _id: order._id,
+        status: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+        items: updatedItems,
+        shippingAddress: order.shippingAddress,
+        subtotalAmount: order.subtotalAmount,
+        discountAmount: order.discountAmount,
+        couponCode: order.couponCode,
+        totalAmount: order.totalAmount,
+        placedAt: order.statusTimestamps.placedAt,
+        createdAt: order.createdAt
+      };
+    });
+
     res.status(200).json({
       message: 'Order history fetched successfully',
-      orders
+      orders: formattedOrders
     });
 
   } catch (error) {
     console.error('Error fetching order history:', error);
     res.status(500).json({ error: 'Failed to fetch order history' });
+  }
+};
+
+//to view a particular order in detail
+
+exports.getOrderDetailsByIdController = async (req, res) => {
+  const { orderId } = req.params;
+
+  if (!orderId) {
+    return res.status(400).json({ error: 'Order ID is required' });
+  }
+
+  try {
+    const order = await Order.findById(orderId)
+      .populate({
+        path: 'items.productId',
+        select: 'title brand category variants'
+      });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const enrichedItems = order.items.map(item => {
+      const product = item.productId;
+      const variant = product?.variants?.find(v => v.sku === item.variantSKU);
+
+      return {
+        productId: product?._id,
+        title: product?.title,
+        brand: product?.brand,
+        variantSKU: item.variantSKU,
+        color: item.color || variant?.color,
+        size: item.size || variant?.size,
+        quantity: item.quantity,
+        priceAtPurchase: item.priceAtPurchase,
+        image: variant?.images?.[0] || null
+      };
+    });
+
+    const response = {
+      _id: order._id,
+      userId: order.userId,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      paymentMethod: order.paymentMethod,
+      couponCode: order.couponCode,
+      subtotalAmount: order.subtotalAmount,
+      discountAmount: order.discountAmount,
+      totalAmount: order.totalAmount,
+      shippingAddress: order.shippingAddress,
+      placedAt: order.statusTimestamps?.placedAt,
+      createdAt: order.createdAt,
+      items: enrichedItems
+    };
+
+    res.status(200).json({
+      message: 'Order details fetched successfully',
+      order: response
+    });
+
+  } catch (error) {
+    console.error('Fetch order details error:', error);
+    res.status(500).json({ error: 'Failed to retrieve order details' });
+  }
+};
+
+// to cancel an order
+exports.cancelOrderController = async (req, res) => {
+  const { orderId } = req.params;
+  const { userId } = req.body; // optional: ensure only owner/admin cancels
+
+  try {
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.orderStatus === 'Cancelled') {
+      return res.status(400).json({ error: 'Order is already cancelled' });
+    }
+
+    if (['Shipped', 'Delivered'].includes(order.orderStatus)) {
+      return res.status(400).json({ error: 'Order cannot be cancelled after shipping' });
+    }
+
+    // Set order status
+    order.orderStatus = 'Cancelled';
+    order.statusTimestamps.cancelledAt = new Date();
+
+
+    await order.save();
+
+    // Optional: Restock items
+    for (const item of order.items) {
+      await Product.updateOne(
+        { _id: item.productId, "variants.sku": item.variantSKU },
+        { $inc: { "variants.$.stock": item.quantity } }
+      );
+    }
+
+    res.status(200).json({ message: 'Order cancelled successfully', order });
+
+  } catch (error) {
+    console.error('Cancel order error:', error);
+    res.status(500).json({ error: 'Failed to cancel order' });
+  }
+};
+
+
+//update order status controller
+
+exports.updateOrderStatusController = async (req, res) => {
+  const { orderId } = req.params;
+  const { newStatus } = req.body;
+
+  const validStatuses = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
+
+  if (!validStatuses.includes(newStatus)) {
+    return res.status(400).json({ error: 'Invalid order status' });
+  }
+
+  try {
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Prevent backward status change (e.g., Delivered → Pending)
+    const currentStatus = order.orderStatus;
+    const statusOrder = { Pending: 1, Shipped: 2, Delivered: 3, Cancelled: 4 };
+
+    if (statusOrder[newStatus] < statusOrder[currentStatus] && newStatus !== 'Cancelled') {
+      return res.status(400).json({ error: 'Cannot update to an earlier status' });
+    }
+
+    // Cancelled must follow separate logic
+    if (newStatus === 'Cancelled' && ['Shipped', 'Delivered'].includes(order.orderStatus)) {
+      return res.status(400).json({ error: 'Cannot cancel after shipment' });
+    }
+
+    order.orderStatus = newStatus;
+
+    if (newStatus === 'Shipped') {
+      order.statusTimestamps.shippedAt = new Date();
+    } else if (newStatus === 'Delivered') {
+      order.statusTimestamps.deliveredAt = new Date();
+    } else if (newStatus === 'Cancelled') {
+      order.statusTimestamps.cancelledAt = new Date();
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      message: `Order status updated to ${newStatus}`,
+      order
+    });
+
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ error: 'Failed to update order status' });
   }
 };
 

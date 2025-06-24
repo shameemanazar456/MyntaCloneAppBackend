@@ -42,9 +42,11 @@ router.get('/View-profile/:id',userController.getUserByIdController)
 router.post('/add_product',Adminjwt,multerConfig.array('images',10),productController.addProduct); //')
 
 //get All product
-router.get('/all-products',Authjwt,productController.getAllProductController)
+router.get('/all-products',productController.getAllProductController)
+
 
 //get product by Id
+router.get('/product/:id', productController.getProductById)
 
 
         /* Cart Controller Routes */
@@ -80,6 +82,16 @@ router.post('/order/place-an-order/:userId', orderController.placeOrderControlle
 
 // to view orderhistory of a particular user
 router.get('/orders/:userId', orderController.viewOrderHistoryController);
+
+//to view an order in detail
+router.get('/order/:orderId', orderController.getOrderDetailsByIdController);
+
+//to cancel an order
+// Cancel an order
+router.put('/order/:orderId/cancel', orderController.cancelOrderController);
+
+// Update order status (admin)
+router.put('/order/:orderId/status', orderController.updateOrderStatusController);
 
 
 //4)export the router

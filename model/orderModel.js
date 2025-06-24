@@ -1,17 +1,12 @@
 const mongoose = require('mongoose');
 
 const orderItemSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
-  },
-  quantity: {
-    type: Number,
-    default: 1
-  },
-  size: String,
-  price: Number
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'products', required: true },
+  variantSKU: { type: String, required: true },
+  quantity: { type: Number, required: true },
+  priceAtPurchase: { type: Number, required: true },
+  color: { type: String },
+  size: { type: String }
 }, { _id: false });
 
 const orderSchema = new mongoose.Schema({

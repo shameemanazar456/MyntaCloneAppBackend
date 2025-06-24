@@ -55,7 +55,7 @@ const userSchema = new mongoose.Schema({
     {
       productId: { type: mongoose.Schema.Types.ObjectId, ref: 'products' },
       quantity: { type: Number, default: 1 },
-      size: String
+      variantSKU: String
     }
   ],
   subtotal: { type: Number, default: 0 },

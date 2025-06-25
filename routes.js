@@ -9,6 +9,8 @@ const cartController = require('./controller/cartController')
 //import orderController
 const orderController = require('./controller/orderController')
 
+const coupenController = require('./controller/couponController')
+
 //import user jwtmidddleware
 const Authjwt=require('./middleware/jwtMiddleware')
 
@@ -48,16 +50,19 @@ router.get('/all-products',productController.getAllProductController)
 //get product by Id
 router.get('/product/:id', productController.getProductById)
 
+//to add a coupon code
+router.post('/addCoupon', coupenController.createCouponController);
+
 
         /* Cart Controller Routes */
 
 //to add an item to the cart
 router.post('/cart/add-product-to-cart/:userId', cartController.addToCartController);
-//userId in path, req.body - productId, Quantity, size
+//path - userId, req.body  { productId, quantity, variantSKU } = req.body;
 
 //to update an item in the cart
 router.put('/cart/update-cart', cartController.updateCartItemController);
-//req-body- userId, productId, size, newSize, quantity
+//req-body- userId, productId, variantSKU, quantity 
 
 //to view cart items of a particular customer
 router.get('/cart/:userId', cartController.getCartItemsController);
@@ -65,11 +70,11 @@ router.get('/cart/:userId', cartController.getCartItemsController);
 
 //to delete an item from cart
 router.delete('/cart/remove-cart-item', cartController.removeFromCartController);
-//req-body - userId, productId, size
+//req-body - userId, productId, variantSKU
 
 //to delete multiple item from cart
 router.delete('/cart/remove-multiple-cart-item', cartController.removeMultipleFromCartController);
-//req-body - userId, items -[ {productId:"", size:""} ]
+//req-body - userId, items -[ {productId, variantSKU} ]
 
 //to apply coupon to the cart
 router.post('/cart/apply-coupon', cartController.applyCouponController);

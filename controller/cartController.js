@@ -609,7 +609,7 @@ exports.applyCouponController = async (req, res) => {
 
 
 // Get cart items for a user
-exports.getCartItemsController = async (req, res) => {
+/* exports.getCartItemsController = async (req, res) => {
   const { userId } = req.params;
 
   if (!userId) {
@@ -635,6 +635,78 @@ exports.getCartItemsController = async (req, res) => {
         image: variant?.images?.[0] || null
       };
     });
+
+    res.status(200).json({
+      items,
+      subtotal: user.cart.subtotal,
+      discount: user.cart.discount,
+      cartTotal: user.cart.cartTotal
+    });
+
+  } catch (error) {
+    console.error('Get cart items error:', error);
+    res.status(500).json({ error: 'Failed to retrieve cart items' });
+  }
+}; */
+
+const applyDiscount = (price, discount) => {
+  if (!discount || !discount.isActive) return price;
+
+  const now = new Date();
+  if (now < discount.startDate || now > discount.endDate) return price;
+
+  let discountedPrice = price;
+
+  if (discount.type === 'flat') {
+    discountedPrice = Math.max(0, price - discount.value);
+  } else if (discount.type === 'percentage') {
+    discountedPrice = Math.max(0, price - (price * discount.value / 100));
+  }
+
+  return Math.round(discountedPrice);
+};
+
+
+exports.getCartItemsController = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  try {
+    const user = await users.findById(userId)
+      .populate('cart.items.productId')
+      .select('cart');
+    
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const items = user.cart.items.map(item => {
+      const product = item.productId;
+      const variant = product.variants.find(v => v.sku === item.variantSKU);
+
+      if (!variant) return null;
+
+      const originalPrice = variant.price;
+
+      // Check for variant discount first, fallback to product discount
+      const applicableDiscount = variant.discount?.isActive ? variant.discount : product.discount;
+      const finalPrice = applyDiscount(originalPrice, applicableDiscount);
+
+      return {
+        productId: product._id,
+        variantSKU: item.variantSKU,
+        productTitle: product.title,
+        brand: product.brand,
+        color: variant.color,
+        size: variant.size,
+        originalPrice,
+        finalPrice,
+        applicableDiscount,
+        quantity: item.quantity,
+        image: variant.images?.[0] || null
+      };
+    }).filter(Boolean); // Remove null entries if any
 
     res.status(200).json({
       items,

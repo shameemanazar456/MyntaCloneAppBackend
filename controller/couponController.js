@@ -11,12 +11,12 @@ exports.createCouponController = async (req, res) => {
       discountValue,
       maxDiscountAmount,
       minOrderAmount,
-      expiresAt,
+      validity,
       usageLimit
     } = req.body;
 
     // Validate required fields
-    if (!code || !discountType || !discountValue || !expiresAt) {
+    if (!code || !discountType || !discountValue || !validity) {
       return res.status(400).json({ error: 'Required fields are missing' });
     }
 
@@ -26,13 +26,17 @@ exports.createCouponController = async (req, res) => {
       return res.status(409).json({ error: 'Coupon code already exists' });
     }
 
+     // Calculate expiry date (10 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + validity);
+
     const newCoupon = new coupon({
       code: code.toUpperCase(),
       discountType,
       discountValue,
       maxDiscountAmount: discountType === 'percentage' ? maxDiscountAmount || null : null,
       minOrderAmount: minOrderAmount || 0,
-      expiresAt: new Date(expiresAt),
+      expiresAt,
       usageLimit: usageLimit || 1,
       isActive: true
     });

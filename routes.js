@@ -44,7 +44,7 @@ router.get('/View-profile/:id',userController.getUserByIdController)
 router.post('/add_product',Adminjwt,multerConfig.array('images',10),productController.addProduct); //')
 
 //get All product
-router.get('/all-products',productController.getAllProductController)
+router.get('/all-products',Authjwt,productController.getAllProductController)
 
 
 //get product by Id

@@ -1,4 +1,4 @@
-const mongoose=require('mongoose')
+const mongoose = require('mongoose')
 
 const addressSchema = new mongoose.Schema({
   fullName: String,
@@ -51,17 +51,17 @@ const userSchema = new mongoose.Schema({
   addresses: [addressSchema],
 
   cart: {
-  items: [
-    {
-      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'products' },
-      quantity: { type: Number, default: 1 },
-      variantSKU: String
-    }
-  ],
-  subtotal: { type: Number, default: 0 },
-  discount: { type: Number, default: 0 },
-  cartTotal: { type: Number, default: 0 }
-},
+    items: [
+      {
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'products' },
+        quantity: { type: Number, default: 1 },
+        variantSKU: String
+      }
+    ],
+    subtotal: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
+    cartTotal: { type: Number, default: 0 }
+  },
 
   orders: [
     {
@@ -80,6 +80,24 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  /* referralCode: {
+    type: String,
+    unique: true,
+    required: true,
+  },
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'users',
+    default: null,
+  },
+  hasPlacedFirstOrder: {
+    type: Boolean,
+    default: false,
+  },
+  walletBalance: {
+  type: Number,
+  default: 0,
+}, */
 
   createdAt: {
     type: Date,
@@ -87,6 +105,6 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-const users=mongoose.model("users",userSchema)
+const users = mongoose.model("users", userSchema)
 
 module.exports = users

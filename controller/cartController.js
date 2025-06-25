@@ -425,10 +425,10 @@ exports.removeFromCartController = async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const initialLength = user.cart.items.length;
-
+    
     // Remove item
     user.cart.items = user.cart.items.filter(
-      item => !(item.productId.toString() === productId && item.variantSKU === variantSKU)
+      item => !(item.productId._id.toString() === productId && item.variantSKU === variantSKU)
     );
 
     if (user.cart.items.length === initialLength) {
@@ -490,7 +490,7 @@ exports.removeMultipleFromCartController = async (req, res) => {
 
     user.cart.items = user.cart.items.filter(cartItem =>
       !items.some(toRemove =>
-        cartItem.productId.toString() === toRemove.productId &&
+        cartItem.productId._id.toString() === toRemove.productId &&
         cartItem.variantSKU === toRemove.variantSKU
       )
     );

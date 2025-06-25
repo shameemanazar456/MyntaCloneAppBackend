@@ -1,6 +1,6 @@
 const Order = require('../model/orderModel');
 const users = require('../model/userModel');
-const Product = require('../model/productModel'); 
+const Product = require('../model/productModel');
 const Coupon = require('../model/couponModel');
 
 // controller for handling order placement
@@ -24,7 +24,7 @@ const getDiscountedPrice = (variant, product) => {
       price -= (price * discount.value) / 100;
     }
   }
-
+  price = Math.round(price)
   return Math.max(price, 0);
 };
 
@@ -37,6 +37,8 @@ exports.placeOrderController = async (req, res) => {
 
   try {
     let subtotal = 0;
+    let discountAmount = 0;
+    let totalPrice = 0
     const finalItems = [];
 
     for (const item of items) {
@@ -52,9 +54,18 @@ exports.placeOrderController = async (req, res) => {
         return res.status(400).json({ error: `Insufficient stock for ${product.title} (${variant.color} - ${variant.size})` });
       }
 
-      const unitPrice = getDiscountedPrice(variant, product);
-      const totalItemPrice = unitPrice * quantity;
+      const originalUnitPrice = variant.price;
+      const discountedUnitPrice = getDiscountedPrice(variant, product);
+
+
+      const totalItemPrice = discountedUnitPrice * quantity;
+       const totalPricePerProduct = originalUnitPrice*quantity
+      totalPrice += totalPricePerProduct
       subtotal += totalItemPrice;
+
+      // Add product/variant level discount to discountAmount
+      const itemDiscount = (originalUnitPrice - discountedUnitPrice) * quantity;
+      discountAmount += itemDiscount;
 
       // Deduct stock
       variant.stock -= quantity;
@@ -63,7 +74,7 @@ exports.placeOrderController = async (req, res) => {
         productId,
         variantSKU,
         quantity,
-        priceAtPurchase: unitPrice,
+        priceAtPurchase: discountedUnitPrice,
         color: variant.color,
         size: variant.size
       });
@@ -71,8 +82,8 @@ exports.placeOrderController = async (req, res) => {
       await product.save();
     }
 
+
     // Apply coupon (if any)
-    let discountAmount = 0;
     let finalAmount = subtotal;
 
     if (couponCode) {
@@ -88,16 +99,13 @@ exports.placeOrderController = async (req, res) => {
         return res.status(400).json({ error: 'Coupon usage limit reached' });
       }
 
-      if (coupon.discountType === 'percentage') {
-        discountAmount = (subtotal * coupon.discountValue) / 100;
-        if (coupon.maxDiscountAmount) {
-          discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
-        }
-      } else if (coupon.discountType === 'flat') {
-        discountAmount = coupon.discountValue;
-      }
+      const couponDiscount = (coupon.discountType === 'percentage')
+        ? Math.min((subtotal * coupon.discountValue) / 100, coupon.maxDiscountAmount || Infinity)
+        : coupon.discountValue;
 
-      finalAmount -= discountAmount;
+      discountAmount += couponDiscount;
+      finalAmount -= couponDiscount;
+
 
       // Save coupon usage
       if (usage) {
@@ -114,7 +122,7 @@ exports.placeOrderController = async (req, res) => {
       items: finalItems,
       shippingAddress,
       paymentMethod,
-      subtotalAmount: subtotal,
+      subtotalAmount: totalPrice,
       discountAmount,
       couponCode: couponCode || null,
       totalAmount: finalAmount,
@@ -127,11 +135,46 @@ exports.placeOrderController = async (req, res) => {
 
     await order.save();
 
-    // Clear user cart
     const user = await users.findById(userId);
-    user.orders.push(order._id);
-    user.cart = { items: [], subtotal: 0, discount: 0, cartTotal: 0 };
-    await user.save();
+user.orders.push(order._id);
+
+// Create a set of ordered variantSKUs for fast lookup
+const orderedItemsMap = new Map();
+for (const item of finalItems) {
+  orderedItemsMap.set(`${item.productId}_${item.variantSKU}`, item.quantity);
+}
+
+// Filter out ordered items from the user's cart
+const remainingCartItems = user.cart.items.filter(cartItem => {
+  const key = `${cartItem.productId}_${cartItem.variantSKU}`;
+  return !orderedItemsMap.has(key);
+});
+
+// Recalculate cart totals
+let newSubtotal = 0;
+let newDiscount = 0;
+
+for (const item of remainingCartItems) {
+  const product = await Product.findById(item.productId);
+  if (!product) continue;
+  const variant = product.variants.find(v => v.sku === item.variantSKU);
+  if (!variant) continue;
+
+  const originalPrice = variant.price;
+  const discountedPrice = getDiscountedPrice(variant, product);
+  const itemQty = item.quantity;
+
+  newSubtotal += discountedPrice * itemQty;
+  newDiscount += (originalPrice - discountedPrice) * itemQty;
+}
+
+user.cart.items = remainingCartItems;
+user.cart.subtotal = newSubtotal;
+user.cart.discount = newDiscount;
+user.cart.cartTotal = Math.max(newSubtotal, 0);
+
+await user.save();
+
 
     res.status(201).json({
       message: 'Order placed successfully',

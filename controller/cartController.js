@@ -510,9 +510,9 @@ let subtotal = 0;
       if (!variant) continue;
 
       const originalPrice = variant.price;
-      const discountedPrice = getDiscountedPrice(originalPrice, variant.discount);
+      let discountedPrice = getDiscountedPrice(originalPrice, variant.discount);
       if (discountedPrice === originalPrice) {
-          discountedPrice = getDiscountedPrice(originalPrice, cartProduct.discount);
+          discountedPrice = getDiscountedPrice(originalPrice, prod.discount);
         }
       subtotal += originalPrice * item.quantity;
       discount += (originalPrice - discountedPrice) * item.quantity;

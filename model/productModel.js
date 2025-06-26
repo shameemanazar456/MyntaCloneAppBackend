@@ -38,6 +38,11 @@ const productSchema = new mongoose.Schema({
   },
   category: { type: String },
   description: { type: String },
+  gender: { 
+    type: String, 
+    enum: ['male', 'female', 'unisex', 'kids'], 
+    default: 'unisex' 
+  },
   variants: [variantSchema],
   discount: discountSchema,
   reviews: [reviewSchema], // Add customer reviews here

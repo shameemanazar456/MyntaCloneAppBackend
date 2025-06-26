@@ -336,9 +336,9 @@ exports.updateCartItemController = async (req, res) => {
       if (!varData) continue;
 
       const originalPrice = varData.price;
-      const discountedPrice = getDiscountedPrice(originalPrice, varData.discount);
+      let discountedPrice = getDiscountedPrice(originalPrice, varData.discount);
       if (discountedPrice === originalPrice) {
-          discountedPrice = getDiscountedPrice(originalPrice, cartProduct.discount);
+          discountedPrice = getDiscountedPrice(originalPrice, prod.discount);
         }
       subtotal += originalPrice * item.quantity;
       discount += (originalPrice - discountedPrice) * item.quantity;

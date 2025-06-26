@@ -11,6 +11,8 @@ const orderController = require('./controller/orderController')
 
 const coupenController = require('./controller/couponController')
 
+const adsController = require('./controller/adsController')
+
 //import user jwtmidddleware
 const Authjwt=require('./middleware/jwtMiddleware')
 
@@ -53,6 +55,17 @@ router.get('/product/:id', productController.getProductById)
 //to add a coupon code
 router.post('/addCoupon', coupenController.createCouponController);
 
+
+/* Ads Controller Routes */
+//add ads        
+router.post('/add-ads', Adminjwt, multerConfig.single('image'), adsController.addAd);
+//update ads
+router.put('/update-ad/:adId', Adminjwt, multerConfig.single('image'), adsController.updateAd)
+//delete ads
+router.delete('/delete-ad/:adId', Adminjwt, adsController.deleteAd);
+
+//view ads
+router.get('/get-ads', Authjwt, adsController.getAdsController);
 
         /* Cart Controller Routes */
 

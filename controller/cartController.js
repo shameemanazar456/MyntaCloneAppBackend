@@ -697,7 +697,7 @@ exports.getCartItemsController = async (req, res) => {
         productId: product._id,
         variantSKU: item.variantSKU,
         productTitle: product.title,
-        brand: product.brand,
+        brand: product.brand.name,
         color: variant.color,
         size: variant.size,
         originalPrice,

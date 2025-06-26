@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
 
 // Register Controller
 exports.registerController = async (req, res) => {
-  const {  email, password} = req.body;
+  const {  email, password /*, referralCode */} = req.body;
 
   try {
     // Basic validation
@@ -20,14 +20,30 @@ exports.registerController = async (req, res) => {
     if (existingUser) {
       return res.status(406).json({ error: 'Account already exists' });
     }
+    /* // Optional: Validate referral code if provided
+        let referredBy = null;
+        if (referralCode) {
+          const referrer = await users.findOne({ referralCode });
+          if (!referrer) {
+            return res.status(400).json({ error: 'Invalid referral code' });
+          }
+          referredBy = referrer._id;
+        }
+     */
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
+/* 
+        // Generate unique referral code for the new user (simple example)
+    const newReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+ */
     // Create new user
     const newUser = new users({
       email,
       password: hashedPassword,
+      /* referralCode: newReferralCode,
+      referredBy, 
+      store referrer’s _id if applicable */
     });
 
     await newUser.save();
@@ -128,8 +144,9 @@ exports.updateProfileController = async (req, res) => {
 
         //update Address
         if (address && typeof address === 'object') {
-            updateData.addresses = [address]; // overwrite existing addresses with a single one
-        }
+    existingUser.addresses.push(address);
+    updateData.addresses = existingUser.addresses;
+}
 
 
         

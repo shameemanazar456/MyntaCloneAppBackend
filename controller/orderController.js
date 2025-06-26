@@ -1,7 +1,11 @@
 const Order = require('../model/orderModel');
 const users = require('../model/userModel');
+/* const referralRewards = require("../model/referralRewardModel")
+ */
 const Product = require('../model/productModel');
 const Coupon = require('../model/couponModel');
+/* const { handleReferralAfterFirstOrder } = require('../utils/referralUtils');
+ */
 
 // controller for handling order placement
 
@@ -175,6 +179,8 @@ user.cart.cartTotal = Math.max(newSubtotal, 0);
 
 await user.save();
 
+/* //function to handle referral logic
+await handleReferralAfterFirstOrder(userId); */
 
     res.status(201).json({
       message: 'Order placed successfully',

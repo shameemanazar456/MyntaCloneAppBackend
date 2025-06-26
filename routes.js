@@ -33,10 +33,10 @@ router.post('/register',userController.registerController)
 router.post('/login',userController.loginController)
 
 //update Profile
-router.put('/update-profile',userController.updateProfileController)
+router.put('/update-profile',Authjwt, userController.updateProfileController)
 
 // get Particular customer details with id
-router.get('/View-profile/:id',userController.getUserByIdController)
+router.get('/View-profile/:id',Authjwt,userController.getUserByIdController)
 
         /* product controller  Routes*/
 
@@ -83,7 +83,7 @@ router.post('/cart/apply-coupon', cartController.applyCouponController);
         /* Order controller Routes */
 
 //to place an order
-router.post('/order/place-an-order/:userId', orderController.placeOrderController);
+router.post('/order/place-an-order/:userId',Authjwt, orderController.placeOrderController);
 
 // to view orderhistory of a particular user
 router.get('/orders/:userId', orderController.viewOrderHistoryController);

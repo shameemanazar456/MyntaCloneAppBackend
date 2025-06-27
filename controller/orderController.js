@@ -206,7 +206,7 @@ exports.viewOrderHistoryController = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate({
         path: 'items.productId',
-        select: 'title brand category variants'  // populate only basic info
+        select: 'title brand category variants reviews'  // populate only basic info
       });
 
     if (!orders || orders.length === 0) {
@@ -217,7 +217,6 @@ exports.viewOrderHistoryController = async (req, res) => {
       const updatedItems = order.items.map(item => {
         const product = item.productId;
         const variantDetails = product?.variants?.find(v => v.sku === item.variantSKU);
-
         return {
           productId: product?._id,
           title: product?.title,
@@ -227,14 +226,15 @@ exports.viewOrderHistoryController = async (req, res) => {
           size: item.size || variantDetails?.size,
           priceAtPurchase: item.priceAtPurchase,
           quantity: item.quantity,
-          image: variantDetails?.images?.[0] || null
-        };
+          image: variantDetails?.images?.[0] || null,
+          reviews:product.reviews,       };
       });
 
       return {
         _id: order._id,
         status: order.orderStatus,
         paymentStatus: order.paymentStatus,
+        paymentMethod:order.paymentMethod,
         items: updatedItems,
         shippingAddress: order.shippingAddress,
         subtotalAmount: order.subtotalAmount,

@@ -369,7 +369,7 @@ exports.cancelOrderController = async (req, res) => {
 
 exports.updateOrderStatusController = async (req, res) => {
   const { orderId } = req.params;
-  const { newStatus } = req.body;
+  const { newStatus } = req.body;   
 
   const validStatuses = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
 
@@ -403,6 +403,7 @@ exports.updateOrderStatusController = async (req, res) => {
       order.statusTimestamps.shippedAt = new Date();
     } else if (newStatus === 'Delivered') {
       order.statusTimestamps.deliveredAt = new Date();
+      order.paymentStatus = 'Paid'; 
     } else if (newStatus === 'Cancelled') {
       order.statusTimestamps.cancelledAt = new Date();
     }

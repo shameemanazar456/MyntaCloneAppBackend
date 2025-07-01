@@ -13,12 +13,17 @@ const coupenController = require('./controller/couponController')
 
 const adsController = require('./controller/adsController')
 
+const adminCotroller = require('./controller/adminController')
+
+const godownController = require('./controller/godownController');
+
 //import user jwtmidddleware
 const Authjwt=require('./middleware/jwtMiddleware')
 
 //import Admin jwtmidddleware
 const Adminjwt=require('./middleware/AdminMiddleware')
 const multerConfig = require('./middleware/multerMiddleware')
+const adminMiddleware = require('./middleware/AdminMiddleware')
 
 
 
@@ -109,8 +114,35 @@ router.get('/order/:orderId', orderController.getOrderDetailsByIdController);
 router.put('/order/:orderId/cancel', orderController.cancelOrderController);
 
 // Update order status (admin)
-router.put('/order/:orderId/status', orderController.updateOrderStatusController);
+router.put('/admin/update-order-status/:orderId', orderController.updateOrderStatusController);
 
+//to view all orders[admin]
+router.get('/admin/getAllOrders', adminCotroller.viewOrderHistoryByAdminController )
+
+//to view all users[admin]
+router.get('/admin/getAllUsers', adminCotroller.getAllUsersForAdminController )
+//to get count of nonAdmin User
+router.get('/admin/getUsersCount', adminCotroller.getNonAdminUsersCountController )
+
+//to get top selling categories
+router.get('/admin/getTopSellingCategories', adminCotroller.getTopSellingCategories )
+
+//to get monthly revenue
+router.get('/admin/getMonthlyRevenue', adminCotroller.getMonthlyRevenue )
+
+//to get weekly revenue
+router.get('/admin/getWeeklyRevenue', adminCotroller.getWeeklyRevenue )
+
+//to view all users[admin]
+router.get('/admin/getAllProducts', adminCotroller.getAllProductController )
+
+
+router.post('/admin/createGodown', godownController.createGodown);
+router.get('/admin/getAllGodowns', godownController.getAllGodowns);
+router.get('/admin/nearby', godownController.getNearbyGodowns);
+router.get('/:id', godownController.getGodownById);
+router.put('/:id', godownController.updateGodown);
+router.delete('/:id', godownController.deleteGodown);
 
 //4)export the router
 module.exports=router

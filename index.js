@@ -27,6 +27,9 @@ MyntraServer.use(express.json())
 
 //use router
 MyntraServer.use(router)
+const path = require('path');
+MyntraServer.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// MyntraServer.use('/uploads',express.static('./uploads'))
 //set port for the server
 PORT = 4000 || process.env.PORT
 

@@ -52,7 +52,14 @@ router.post('/add_product',Adminjwt,multerConfig.array('images',10),productContr
 
 //get All product
 router.get('/all-products',Authjwt,productController.getAllProductController)
+//get All product
+router.get('/all-products-admin',Adminjwt,productController.getAllProductController)
 
+//update product details
+router.put('/update-product/:id', Adminjwt,multerConfig.array('images',10),productController.updateProductController);
+
+//delete product
+router.delete('/delete/:id', productController.deleteProduct);
 
 //get product by Id
 router.get('/product/:id', productController.getProductById)

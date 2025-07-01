@@ -45,8 +45,14 @@ const productSchema = new mongoose.Schema({
   },
   variants: [variantSchema],
   discount: discountSchema,
+    status: {
+    type: String,
+    enum: ['Active', 'Inactive'],
+    default: 'Inactive'
+  },
   reviews: [reviewSchema], // Add customer reviews here
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'users' },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  isActive: { type: Boolean, default: true }
 });
 module.exports = mongoose.model('products', productSchema);

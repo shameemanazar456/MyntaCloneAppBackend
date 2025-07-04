@@ -47,6 +47,7 @@ router.get('/View-profile/:id',Authjwt,userController.getUserByIdController)
 
         /* product controller  Routes*/
 
+
 //add product
 router.post('/add_product',Adminjwt,multerConfig.array('images',10),productController.addProduct); //')
 
@@ -74,10 +75,14 @@ router.post('/add-ads', Adminjwt, multerConfig.single('image'), adsController.ad
 //update ads
 router.put('/update-ad/:adId', Adminjwt, multerConfig.single('image'), adsController.updateAd)
 //delete ads
-router.delete('/delete-ad/:adId', Adminjwt, adsController.deleteAd);
+router.delete('/delete-ad/:adId', adsController.deleteAd);
+
+//view ads
+router.get('/get-ads-admin',Adminjwt, adsController.getAdsController);
 
 //view ads
 router.get('/get-ads', Authjwt, adsController.getAdsController);
+
 
         /* Cart Controller Routes */
 
@@ -121,27 +126,31 @@ router.get('/order/:orderId', orderController.getOrderDetailsByIdController);
 router.put('/order/:orderId/cancel', orderController.cancelOrderController);
 
 // Update order status (admin)
-router.put('/admin/update-order-status/:orderId', orderController.updateOrderStatusController);
+router.put('/admin/update-order-status/:orderId',Adminjwt, orderController.updateOrderStatusController);
 
 //to view all orders[admin]
-router.get('/admin/getAllOrders', adminCotroller.viewOrderHistoryByAdminController )
+router.get('/admin/getAllOrders',Adminjwt, adminCotroller.viewOrderHistoryByAdminController )
 
 //to view all users[admin]
-router.get('/admin/getAllUsers', adminCotroller.getAllUsersForAdminController )
+router.get('/admin/getAllUsers',Adminjwt, adminCotroller.getAllUsersForAdminController )
+
+//to delete a user
+router.delete('/admin/deleteaUser/:id',Adminjwt, adminCotroller.deleteUserController )
+
 //to get count of nonAdmin User
-router.get('/admin/getUsersCount', adminCotroller.getNonAdminUsersCountController )
+router.get('/admin/getUsersCount',Adminjwt, adminCotroller.getNonAdminUsersCountController )
 
 //to get top selling categories
-router.get('/admin/getTopSellingCategories', adminCotroller.getTopSellingCategories )
+router.get('/admin/getTopSellingCategories',Adminjwt, adminCotroller.getTopSellingCategories )
 
 //to get monthly revenue
-router.get('/admin/getMonthlyRevenue', adminCotroller.getMonthlyRevenue )
+router.get('/admin/getMonthlyRevenue',Adminjwt, adminCotroller.getMonthlyRevenue )
 
 //to get weekly revenue
-router.get('/admin/getWeeklyRevenue', adminCotroller.getWeeklyRevenue )
+router.get('/admin/getWeeklyRevenue', Adminjwt,adminCotroller.getWeeklyRevenue )
 
 //to view all users[admin]
-router.get('/admin/getAllProducts', adminCotroller.getAllProductController )
+router.get('/admin/getAllProducts',Adminjwt, adminCotroller.getAllProductController )
 
 
 router.post('/admin/createGodown', godownController.createGodown);

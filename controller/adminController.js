@@ -12,7 +12,7 @@ exports.getAllUsersForAdminController = async (req, res) => {
     
 
     try {
-        const user = await users.find().select('-password'); // exclude password
+        const user = await users.find({ isAdmin: false }).select('-password'); // exclude password
 
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
@@ -24,6 +24,25 @@ exports.getAllUsersForAdminController = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch user details' });
     }
 };
+
+exports.deleteUserController = async (req, res) => {
+  
+const userId = req.params.id; // ✅ plain string
+
+  try {
+    const user = await users.findByIdAndDelete(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found or already deleted' });
+    }
+
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+};
+
 exports.getNonAdminUsersCountController = async (req, res) => {
   try {
     const nonAdminUserCount = await users.countDocuments({ isAdmin: false });

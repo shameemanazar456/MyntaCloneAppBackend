@@ -3,23 +3,39 @@ const fs = require('fs');
 const path = require('path');
 //add ads
 exports.addAd = async (req, res) => {
-    try {
-        const { title, link, expiresAt } = req.body;
-        const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+  try {
+    const { title, link, expiresAt } = req.body;
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
 
-        if (!title || !imagePath) {
-            return res.status(400).json({ error: 'Title and image are required.' });
-        }
+    // Debug logs (optional, useful during testing)
+    console.log('Form Data:', { title, link, expiresAt });
+    console.log('Uploaded File:', req.file);
 
-        const newAd = new Ad({ title, image: imagePath, link, expiresAt });
-        await newAd.save();
-
-        res.status(201).json({ message: 'Ad created successfully.', ad: newAd });
-    } catch (error) {
-        console.error('Add Ad Error:', error);
-        res.status(500).json({ error: 'Failed to create ad.' });
+    // Validation
+    if (!title || !imagePath) {
+      return res.status(400).json({ error: 'Title and image are required.' });
     }
+
+    const newAd = new Ad({
+      title,
+      image: imagePath,
+      link,
+      expiresAt: expiresAt || null,
+      isActive: true, // Optional: default on creation
+    });
+
+    await newAd.save();
+
+    return res.status(201).json({
+      message: 'Ad created successfully.',
+      ad: newAd,
+    });
+  } catch (error) {
+    console.error('Add Ad Error:', error);
+    return res.status(500).json({ error: 'Failed to create ad.' });
+  }
 };
+
 
 //update ads
 exports.updateAd = async (req, res) => {
